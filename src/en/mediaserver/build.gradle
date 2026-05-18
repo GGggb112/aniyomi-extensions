@@ -1,0 +1,7 @@
+ext {
+    extName = 'MediaServer'
+    extClass = '.MediaServer'
+    extVersionCode = 1
+}
+
+apply from: "$rootDir/common.gradle"
