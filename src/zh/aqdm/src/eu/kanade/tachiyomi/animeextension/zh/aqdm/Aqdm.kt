@@ -77,16 +77,31 @@ class Aqdm : AnimeHttpSource() {
         return Jsoup.parse(decoded)
     }
 
+    // ===== Tag 中文->英文 slug 映射 =====
+    private val tagSlugs = arrayOf(
+        "",           // 0: 无
+        "uncensored", // 1: 无修正
+        "cartoon",    // 2: 卡通
+        "zipai",      // 3: 自拍
+        "toupai",     // 4: 偷拍
+        "caption",    // 5: 中文字幕
+        "hotel",      // 6: 酒店
+        "ktv",        // 7: KTV
+        "classroom",  // 8: 教室
+        "office",     // 9: 办公室
+        "outside",    // 10: 户外
+    )
+
     // ===== 搜索（含分类/标签路由）=====
     override fun searchAnimeRequest(
         page: Int,
         query: String,
         filters: AnimeFilterList,
     ): Request {
-        val categoryFilter = filters.firstOrNull { it is CategoryFilter } as? CategoryFilter
+        val catFilter = filters.firstOrNull { it is CategoryFilter } as? CategoryFilter
         val tagFilter = filters.firstOrNull { it is TagFilter } as? TagFilter
 
-        val catPath = when (categoryFilter?.state) {
+        val catPath = when (catFilter?.state) {
             1 -> "cn"
             2 -> "hk"
             3 -> "jp"
@@ -97,17 +112,22 @@ class Aqdm : AnimeHttpSource() {
             else -> null
         }
 
-        val tagPath = tagFilter?.state?.takeIf { it.isNotBlank() }
+        val tagIdx = tagFilter?.state ?: 0
+        val tagSlug = if (tagIdx in 1..tagSlugs.lastIndex) tagSlugs[tagIdx] else null
 
         return when {
-            tagPath != null -> {
-                GET("$baseUrl/videos/tag/$tagPath.html", headers)
+            tagSlug != null -> {
+                if (page <= 1) {
+                    GET("$baseUrl/videos/tag/$tagSlug.html", headers)
+                } else {
+                    GET("$baseUrl/videos/tag/$tagSlug/$page.html", headers)
+                }
             }
             catPath != null -> {
                 if (page <= 1) {
                     GET("$baseUrl/videos/category/$catPath.html", headers)
                 } else {
-                    GET("$baseUrl/videos/category/$catPath/page/$page.html", headers)
+                    GET("$baseUrl/videos/category/$catPath/$page.html", headers)
                 }
             }
             query.isNotBlank() -> {
@@ -144,29 +164,30 @@ class Aqdm : AnimeHttpSource() {
 
     // ===== 列表页解析 =====
     private fun parseListPage(doc: Document): AnimesPage {
-        val items = doc.select("div.video-item, li.video-item, div[class*=video-item]")
+        val items = doc.select("div.videos-item")
         val animeList = items.map { item ->
             SAnime.create().apply {
-                val linkEl = item.selectFirst("a[href*=play]")
-                    ?: item.selectFirst("a.thumb-link")
-                    ?: item.selectFirst("a")
+                val linkEl = item.selectFirst("a.thumbnail-cover-link")
+                    ?: item.selectFirst("a[href*=play]")
                 val href = linkEl?.attr("href") ?: ""
                 url = if (href.startsWith("http")) href else baseUrl + href
 
-                title = item.select(".video-title, .title, h3, h4").text()
-                    .ifEmpty { linkEl?.attr("title") ?: "" }
-                    .ifEmpty { linkEl?.text() ?: "" }
+                val titleEl = item.selectFirst(".videos-title a")
+                title = titleEl?.attr("title")?.trim()
+                    ?: titleEl?.text()?.trim()
+                    ?: linkEl?.attr("alt")?.trim()
+                    ?: ""
 
-                thumbnail_url = item.selectFirst("img")?.attr("data-original")
-                    ?: item.selectFirst("img")?.attr("data-src")
-                    ?: item.selectFirst("img")?.attr("src")
+                val imgEl = item.selectFirst("img.videos-thumbnail")
+                    ?: item.selectFirst("img")
+                thumbnail_url = imgEl?.attr("data-original")
+                    ?: imgEl?.attr("data-src")
+                    ?: imgEl?.attr("src")
                     ?: ""
             }
         }
 
-        val hasNext = doc.select(
-            "a.older-posts, a.next, .pagination a:contains(下一)",
-        ).isNotEmpty()
+        val hasNext = doc.select("a.older-posts").isNotEmpty()
         return AnimesPage(animeList, hasNext)
     }
 
@@ -202,11 +223,15 @@ class Aqdm : AnimeHttpSource() {
         val doc = fetchDoc(response)
         val html = doc.html()
 
-        val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
-        val m3u8Url = m3u8Regex.find(html)?.value ?: run {
-            val altRegex = Regex("""https?://cdn\.aqd-tv\.com[^\s"'<>]+""")
-            altRegex.find(html)?.value ?: ""
+        // 优先匹配 let video_url = '...' 模式
+        val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
+            .find(html)?.groupValues?.get(1)
+        if (jsM3u8 != null) {
+            return listOf(Video(jsM3u8, "HLS", videoUrl = jsM3u8))
         }
+
+        val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
+        val m3u8Url = m3u8Regex.find(html)?.value ?: ""
 
         return if (m3u8Url.isNotBlank()) {
             listOf(Video(m3u8Url, "HLS", videoUrl = m3u8Url))
@@ -218,6 +243,11 @@ class Aqdm : AnimeHttpSource() {
     override fun videoUrlParse(response: Response): String {
         val doc = fetchDoc(response)
         val html = doc.html()
+
+        val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
+            .find(html)?.groupValues?.get(1)
+        if (jsM3u8 != null) return jsM3u8
+
         return Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
             .find(html)?.value ?: ""
     }
@@ -245,7 +275,23 @@ class Aqdm : AnimeHttpSource() {
         0,
     )
 
-    class TagFilter : AnimeFilter.Text("标签")
+    class TagFilter : AnimeFilter.Select<String>(
+        "标签",
+        arrayOf(
+            "无",
+            "无修正",
+            "卡通",
+            "自拍",
+            "偷拍",
+            "中文字幕",
+            "酒店",
+            "KTV",
+            "教室",
+            "办公室",
+            "户外",
+        ),
+        0,
+    )
 
     // ===== Headers =====
     override fun headersBuilder(): okhttp3.Headers.Builder {
