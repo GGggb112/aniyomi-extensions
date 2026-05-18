@@ -35,7 +35,7 @@ android {
         minSdk AndroidConfig.minSdk
         targetSdk AndroidConfig.targetSdk
         applicationIdSuffix project.parent.name + "." + project.name
-        versionCode theme == null ? extVersionCode : theme.baseVersionCode + overrideVersionCode
+        versionCode theme == null ? extVersionCode : theme.baseVersionCode + (ext.find("overrideVersionCode") ?: 0)
         versionName "14.$versionCode"
         base {
             archivesName = "aniyomi-$applicationIdSuffix-v$versionName"
