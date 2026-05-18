@@ -1,0 +1,8 @@
+ext {
+extName = 爱情岛论坛
+extClass = .Aqdm
+extVersionCode = 1
+overrideVersionCode = 0
+}
+
+apply from: "$rootDir/common.gradle"
