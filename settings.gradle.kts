@@ -21,10 +21,7 @@ File(rootDir, "lib-multisrc").eachDir { include("lib-multisrc:${it.name}") }
 fun loadAllIndividualExtensions() {
     File(rootDir, "src").eachDir { dir ->
         dir.eachDir { subdir ->
-            // Skip broken mediaserver extension
-            if (subdir.name != "mediaserver") {
-                loadIndividualExtension(dir.name, subdir.name)
-            }
+            loadIndividualExtension(dir.name, subdir.name)
         }
     }
 }
