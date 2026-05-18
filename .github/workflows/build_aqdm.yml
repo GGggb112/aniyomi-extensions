@@ -19,7 +19,7 @@ jobs:
         env:
           ALIAS: ${{ secrets.ALIAS }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_STORE_PASSWORD_OLD: ${{ secrets.KEY_STORE_PASSWORD_OLD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: ./gradlew :src:zh:aqdm:assembleRelease
       - name: Clean up signing key
         run: rm signingkey.jks
