@@ -2,6 +2,8 @@
  * Add or remove modules to load as needed for local development here.
  */
 loadAllIndividualExtensions()
+// Skip broken mediaserver extension
+exclude(":src:en:mediaserver")
 // loadIndividualExtension("all", "jellyfin")
 
 /**
@@ -18,7 +20,9 @@ File(rootDir, "lib-multisrc").eachDir { include("lib-multisrc:${it.name}") }
 /**
  * ======================================== HELPER FUNCTION ========================================
  */
-fun loadAllIndividualExtensions() {
+fun loadAllIndividualExtensions()
+// Skip broken mediaserver extension
+exclude(":src:en:mediaserver") {
     File(rootDir, "src").eachDir { dir ->
         dir.eachDir { subdir ->
             loadIndividualExtension(dir.name, subdir.name)
