@@ -1,7 +1,6 @@
 name: Build Aqdm Only
 on:
   workflow_dispatch:
-
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -12,10 +11,21 @@ jobs:
           java-version: 17
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v4
+      - name: Prepare signing key
+        run: |
+          echo ${{ secrets.SIGNING_KEY }} | base64 -d > signingkey.jks
+          chmod 600 signingkey.jks
       - name: Build Aqdm
+        env:
+          ALIAS: ${{ secrets.ALIAS }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
+          KEY_STORE_PASSWORD_OLD: ${{ secrets.KEY_STORE_PASSWORD_OLD }}
         run: ./gradlew :src:zh:aqdm:assembleRelease
+      - name: Clean up signing key
+        run: rm signingkey.jks
       - name: Upload APK
         uses: actions/upload-artifact@v4
+        if: success()
         with:
           name: aqdm-apk
           path: "**/*.apk"
