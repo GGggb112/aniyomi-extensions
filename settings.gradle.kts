@@ -1,9 +1,17 @@
 /**
  * Add or remove modules to load as needed for local development here.
  */
+// Load all individual extensions, skipping broken ones
+fun loadAllIndividualExtensions() {
+    File(rootDir, "src").eachDir { dir ->
+        dir.eachDir { subdir ->
+            if (subdir.name != "mediaserver") {
+                loadIndividualExtension(dir.name, subdir.name)
+            }
+        }
+    }
+}
 loadAllIndividualExtensions()
-// Skip broken mediaserver extension
-exclude(":src:en:mediaserver")
 // loadIndividualExtension("all", "jellyfin")
 
 /**
@@ -20,9 +28,17 @@ File(rootDir, "lib-multisrc").eachDir { include("lib-multisrc:${it.name}") }
 /**
  * ======================================== HELPER FUNCTION ========================================
  */
-fun loadAllIndividualExtensions()
-// Skip broken mediaserver extension
-exclude(":src:en:mediaserver") {
+fun // Load all individual extensions, skipping broken ones
+fun loadAllIndividualExtensions() {
+    File(rootDir, "src").eachDir { dir ->
+        dir.eachDir { subdir ->
+            if (subdir.name != "mediaserver") {
+                loadIndividualExtension(dir.name, subdir.name)
+            }
+        }
+    }
+}
+loadAllIndividualExtensions() {
     File(rootDir, "src").eachDir { dir ->
         dir.eachDir { subdir ->
             loadIndividualExtension(dir.name, subdir.name)
