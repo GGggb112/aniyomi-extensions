@@ -41,7 +41,7 @@ class Aqdm : AnimeHttpSource() {
                 override fun getAcceptedIssuers(): Array<X509Certificate> = emptyArray()
                 override fun checkClientTrusted(certs: Array<X509Certificate>, authType: String) {}
                 override fun checkServerTrusted(certs: Array<X509Certificate>, authType: String) {}
-            }
+            },
         )
         val sslContext = SSLContext.getInstance("TLSv1.2").apply {
             init(null, trustAllCerts, SecureRandom())
@@ -78,13 +78,13 @@ class Aqdm : AnimeHttpSource() {
         val tagFilter = filters.firstOrNull { it is TagFilter } as? TagFilter
 
         val catPath = when (categoryFilter?.selected) {
-            1 -> "cn"       // 国产
-            2 -> "hk"       // 香港
-            3 -> "jp"       // 日本
-            4 -> "kr"       // 韩国
+            1 -> "cn" // 国产
+            2 -> "hk" // 香港
+            3 -> "jp" // 日本
+            4 -> "kr" // 韩国
             5 -> "southeast-asia" // 东南亚
-            6 -> "tw"       // 台湾
-            7 -> "west"     // 欧美
+            6 -> "tw" // 台湾
+            7 -> "west" // 欧美
             else -> null
         }
 
@@ -95,8 +95,11 @@ class Aqdm : AnimeHttpSource() {
                 GET("$baseUrl/videos/tag/$tagPath.html", headers)
             }
             catPath != null -> {
-                if (page <= 1) GET("$baseUrl/videos/category/$catPath.html", headers)
-                else GET("$baseUrl/videos/category/$catPath/page/$page.html", headers)
+                if (page <= 1) {
+                    GET("$baseUrl/videos/category/$catPath.html", headers)
+                } else {
+                    GET("$baseUrl/videos/category/$catPath/page/$page.html", headers)
+                }
             }
             query.isNotBlank() -> {
                 val encoded = java.net.URLEncoder.encode(query, "UTF-8")
@@ -112,8 +115,11 @@ class Aqdm : AnimeHttpSource() {
 
     // ===== 最新/热门 =====
     override fun latestUpdatesRequest(page: Int): Request {
-        return if (page <= 1) GET(baseUrl, headers)
-        else GET("$baseUrl/videos/index/$page.html", headers)
+        return if (page <= 1) {
+            GET(baseUrl, headers)
+        } else {
+            GET("$baseUrl/videos/index/$page.html", headers)
+        }
     }
 
     override fun latestUpdatesParse(response: Response): AnimesPage {
@@ -172,7 +178,7 @@ class Aqdm : AnimeHttpSource() {
             SEpisode.create().apply {
                 name = title
                 url = response.request.url.toString()
-            }
+            },
         )
     }
 
@@ -216,9 +222,9 @@ class Aqdm : AnimeHttpSource() {
         "分类",
         "category",
         arrayOf(
-            "全部", "国产", "香港", "日本", "韩国", "东南亚", "台湾", "欧美"
+            "全部", "国产", "香港", "日本", "韩国", "东南亚", "台湾", "欧美",
         ),
-        0
+        0,
     )
 
     // 标签过滤器
