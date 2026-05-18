@@ -2,7 +2,8 @@ ext {
     extName = 'Aqdm'
     extClass = '.Aqdm'
     extVersionCode = 1
-    overrideVersionCode = 0
 }
+
+ext.overrideVersionCode = 0
 
 apply from: "$rootDir/common.gradle"
