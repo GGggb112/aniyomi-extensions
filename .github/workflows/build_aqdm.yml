@@ -11,18 +11,16 @@ jobs:
           java-version: 17
           distribution: temurin
       - uses: gradle/actions/setup-gradle@v4
-      - name: Prepare signing key
+      - name: Generate debug keystore
         run: |
-          echo ${{ secrets.SIGNING_KEY }} | base64 -d > signingkey.jks
+          keytool -genkey -v -keystore signingkey.jks -alias debug -keyalg RSA -keysize 2048 -validity 10000 -storepass debugpw -keypass debugpw -dname "CN=Debug, OU=Dev, O=Anikku, L=City, S=State, C=CN" -noprompt
           chmod 600 signingkey.jks
       - name: Build Aqdm
         env:
-          ALIAS: ${{ secrets.ALIAS }}
-          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          ALIAS: debug
+          KEY_STORE_PASSWORD: debugpw
+          KEY_PASSWORD: debugpw
         run: ./gradlew :src:zh:aqdm:assembleRelease
-      - name: Clean up signing key
-        run: rm signingkey.jks
       - name: Upload APK
         uses: actions/upload-artifact@v4
         if: success()
