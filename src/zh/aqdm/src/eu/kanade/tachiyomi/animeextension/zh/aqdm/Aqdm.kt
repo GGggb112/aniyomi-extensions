@@ -86,7 +86,7 @@ class Aqdm : AnimeHttpSource() {
         val categoryFilter = filters.firstOrNull { it is CategoryFilter } as? CategoryFilter
         val tagFilter = filters.firstOrNull { it is TagFilter } as? TagFilter
 
-        val catPath = when (categoryFilter?.selected) {
+        val catPath = when (categoryFilter?.state) {
             1 -> "cn"
             2 -> "hk"
             3 -> "jp"
@@ -232,7 +232,6 @@ class Aqdm : AnimeHttpSource() {
 
     class CategoryFilter : AnimeFilter.Select<String>(
         "分类",
-        "category",
         arrayOf(
             "全部",
             "国产",
