@@ -1,5 +1,5 @@
 ext {
-    extName = '爱情岛论坛'
+    extName = 'Aqdm'
     extClass = '.Aqdm'
     extVersionCode = 1
     overrideVersionCode = 0
