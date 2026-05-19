@@ -8,7 +8,6 @@ import eu.kanade.tachiyomi.animesource.model.SEpisode
 import eu.kanade.tachiyomi.animesource.model.Video
 import eu.kanade.tachiyomi.animesource.online.AnimeHttpSource
 import eu.kanade.tachiyomi.network.GET
-import eu.kanade.tachiyomi.util.asJsoup
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -95,10 +94,14 @@ class Aqdm : AnimeHttpSource() {
         val tagSlug = if (tagIdx in 1 until tagSlugs.size) tagSlugs[tagIdx] else null
 
         val url = when {
-            tagSlug != null -> if (page <= 1) "$baseUrl/videos/tag/$tagSlug.html"
+            tagSlug != null -> {
+                if (page <= 1) "$baseUrl/videos/tag/$tagSlug.html"
                 else "$baseUrl/videos/tag/$tagSlug/$page.html"
-            catPath != null -> if (page <= 1) "$baseUrl/videos/category/$catPath.html"
+            }
+            catPath != null -> {
+                if (page <= 1) "$baseUrl/videos/category/$catPath.html"
                 else "$baseUrl/videos/category/$catPath/$page.html"
+            }
             query.isNotBlank() -> {
                 val encoded = java.net.URLEncoder.encode(query, "UTF-8")
                 "$baseUrl/videos/search.html?key=$encoded&page=$page"
@@ -187,19 +190,25 @@ class Aqdm : AnimeHttpSource() {
         val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
             .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) {
-            return GET(jsM3u8, headers.newBuilder()
-                .add("Referer", "$baseUrl/")
-                .add("Origin", baseUrl)
-                .build())
+            return GET(
+                jsM3u8,
+                headers.newBuilder()
+                    .add("Referer", "$baseUrl/")
+                    .add("Origin", baseUrl)
+                    .build(),
+            )
         }
 
         val m3u8Url = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
             .find(decoded)?.value ?: ""
         if (m3u8Url.isNotBlank()) {
-            return GET(m3u8Url, headers.newBuilder()
-                .add("Referer", "$baseUrl/")
-                .add("Origin", baseUrl)
-                .build())
+            return GET(
+                m3u8Url,
+                headers.newBuilder()
+                    .add("Referer", "$baseUrl/")
+                    .add("Origin", baseUrl)
+                    .build(),
+            )
         }
         // fallback: 返回原页面请求
         return pageRequest
