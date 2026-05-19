@@ -95,12 +95,18 @@ class Aqdm : AnimeHttpSource() {
 
         val url = when {
             tagSlug != null -> {
-                if (page <= 1) "$baseUrl/videos/tag/$tagSlug.html"
-                else "$baseUrl/videos/tag/$tagSlug/$page.html"
+                if (page <= 1) {
+                    "$baseUrl/videos/tag/$tagSlug.html"
+                } else {
+                    "$baseUrl/videos/tag/$tagSlug/$page.html"
+                }
             }
             catPath != null -> {
-                if (page <= 1) "$baseUrl/videos/category/$catPath.html"
-                else "$baseUrl/videos/category/$catPath/$page.html"
+                if (page <= 1) {
+                    "$baseUrl/videos/category/$catPath.html"
+                } else {
+                    "$baseUrl/videos/category/$catPath/$page.html"
+                }
             }
             query.isNotBlank() -> {
                 val encoded = java.net.URLEncoder.encode(query, "UTF-8")
