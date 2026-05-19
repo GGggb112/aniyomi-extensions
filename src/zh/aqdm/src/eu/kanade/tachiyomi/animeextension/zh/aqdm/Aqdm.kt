@@ -169,26 +169,30 @@ class Aqdm : AnimeHttpSource() {
         }
     }
 
-    // ===== 剧集列表（关键修复：用页面自己的 URL）=====
+    // ===== 剧集列表（参照 Nivod 模式 + 容错）=====
     override fun episodeListParse(response: Response): List<SEpisode> {
-        val doc = response.parseDoc()
-        val title = doc.select("title").text().substringBefore(" - ").trim()
-        val episodeUrl = response.request.url.encodedPath.let { path ->
+        return try {
+            val doc = response.parseDoc()
+            val title = doc.select("title").text().substringBefore(" - ").trim()
+            val path = response.request.url.encodedPath
             val query = response.request.url.encodedQuery
-            if (query != null) "$path?$query" else path
+            val episodeUrl = if (query != null) "$path?$query" else path
+            listOf(
+                SEpisode.create().apply {
+                    name = title
+                    url = episodeUrl
+                },
+            )
+        } catch (_: Exception) {
+            emptyList()
         }
-        return listOf(
-            SEpisode.create().apply {
-                name = title
-                url = episodeUrl
-            },
-        )
     }
 
     // ===== 视频提取：参照 Nivod 模式重写 =====
     override fun videoListRequest(episode: SEpisode): Request {
-        // Step 1: 请求剧集页面（使用框架默认方式构建请求）
-        val pageResponse = client.newCall(super.videoListRequest(episode)).execute()
+        // Step 1: 请求剧集页面
+        val pageUrl = if (episode.url.startsWith("http")) episode.url else baseUrl + episode.url
+        val pageResponse = client.newCall(GET(pageUrl, headers)).execute()
         val decoded = pageResponse.use { resp ->
             decodeHtml(resp.body?.string() ?: "")
         }
@@ -200,13 +204,21 @@ class Aqdm : AnimeHttpSource() {
             return GET(jsM3u8, headers)
         }
 
+        // Step 2b: 尝试从 Artplayer 配置提取
+        val artM3u8 = Regex("""url\s*:\s*'([^']+\.m3u8[^']*)'""")
+            .find(decoded)?.groupValues?.get(1)
+        if (artM3u8 != null) {
+            return GET(artM3u8, headers)
+        }
+
+        // Step 2c: 通用 M3U8 正则提取
         val m3u8Url = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
             .find(decoded)?.value ?: ""
         if (m3u8Url.isNotBlank()) {
             return GET(m3u8Url, headers)
         }
-        // fallback
-        return super.videoListRequest(episode)
+        // fallback: 返回原始页面请求
+        return GET(pageUrl, headers)
     }
 
     override fun videoListParse(response: Response): List<Video> {
