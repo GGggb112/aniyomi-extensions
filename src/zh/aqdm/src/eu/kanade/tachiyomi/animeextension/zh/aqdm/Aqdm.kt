@@ -185,51 +185,39 @@ class Aqdm : AnimeHttpSource() {
         )
     }
 
-    // ===== 视频提取：重写 videoListRequest 直接返回 M3U8 请求 =====
+    // ===== 视频提取：参照 Nivod 模式重写 =====
     override fun videoListRequest(episode: SEpisode): Request {
-        // Step 1: 请求剧集页面
-        val pageRequest = GET(baseUrl + episode.url, headers)
-        val pageResponse = client.newCall(pageRequest).execute()
-        val decoded = decodeHtml(pageResponse.body?.string() ?: "")
+        // Step 1: 请求剧集页面（使用框架默认方式构建请求）
+        val pageResponse = client.newCall(super.videoListRequest(episode)).execute()
+        val decoded = pageResponse.use { resp ->
+            decodeHtml(resp.body?.string() ?: "")
+        }
 
         // Step 2: 从解码后的页面提取 M3U8 URL
         val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
             .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) {
-            return GET(
-                jsM3u8,
-                headers.newBuilder()
-                    .add("Referer", "$baseUrl/")
-                    .add("Origin", baseUrl)
-                    .build(),
-            )
+            return GET(jsM3u8, headers)
         }
 
         val m3u8Url = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
             .find(decoded)?.value ?: ""
         if (m3u8Url.isNotBlank()) {
-            return GET(
-                m3u8Url,
-                headers.newBuilder()
-                    .add("Referer", "$baseUrl/")
-                    .add("Origin", baseUrl)
-                    .build(),
-            )
+            return GET(m3u8Url, headers)
         }
-        // fallback: 返回原页面请求
-        return pageRequest
+        // fallback
+        return super.videoListRequest(episode)
     }
 
     override fun videoListParse(response: Response): List<Video> {
         val videoUrl = response.request.url.toString()
         return if (videoUrl.contains(".m3u8")) {
-            listOf(Video(videoUrl, "HLS", videoUrl))
+            listOf(Video(videoUrl, "HLS"))
         } else {
             emptyList()
         }
     }
 
-    override fun videoUrlParse(response: Response): String = ""
 
     // ===== 过滤器 =====
     override fun getFilterList(): AnimeFilterList = AnimeFilterList(CategoryFilter(), TagFilter())
