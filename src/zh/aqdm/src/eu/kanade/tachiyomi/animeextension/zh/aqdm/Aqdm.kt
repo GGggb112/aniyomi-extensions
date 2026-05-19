@@ -212,7 +212,7 @@ class Aqdm : AnimeHttpSource() {
     override fun videoListParse(response: Response): List<Video> {
         val videoUrl = response.request.url.toString()
         return if (videoUrl.contains(".m3u8")) {
-            listOf(Video(videoUrl, "HLS"))
+            listOf(Video(videoUrl, "HLS", videoUrl))
         } else {
             emptyList()
         }
