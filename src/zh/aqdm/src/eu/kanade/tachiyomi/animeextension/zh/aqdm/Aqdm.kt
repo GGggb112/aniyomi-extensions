@@ -172,9 +172,12 @@ class Aqdm : AnimeHttpSource() {
     // ===== 剧集列表（重写 Request 添加 Referer 反反爬）=====
     override fun episodeListRequest(episode: SAnime): Request {
         val pageUrl = if (episode.url.startsWith("http")) episode.url else baseUrl + episode.url
-        return GET(pageUrl, headers.newBuilder()
-            .add("Referer", baseUrl + "/")
-            .build())
+        return GET(
+            pageUrl,
+            headers.newBuilder()
+                .add("Referer", baseUrl + "/")
+                .build(),
+        )
     }
 
     override fun episodeListParse(response: Response): List<SEpisode> {
@@ -200,7 +203,12 @@ class Aqdm : AnimeHttpSource() {
         // Step 1: 请求剧集页面（带 Referer）
         val pageUrl = if (episode.url.startsWith("http")) episode.url else baseUrl + episode.url
         val pageResponse = client.newCall(
-            GET(pageUrl, headers.newBuilder().add("Referer", baseUrl + "/").build())
+            GET(
+                pageUrl,
+                headers.newBuilder()
+                    .add("Referer", baseUrl + "/")
+                    .build(),
+            ),
         ).execute()
         val decoded = pageResponse.use { resp ->
             decodeHtml(resp.body?.string() ?: "")
