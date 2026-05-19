@@ -79,17 +79,17 @@ class Aqdm : AnimeHttpSource() {
 
     // ===== Tag 中文->英文 slug 映射 =====
     private val tagSlugs = arrayOf(
-        "",           // 0: 无
+        "", // 0: 无
         "uncensored", // 1: 无修正
-        "cartoon",    // 2: 卡通
-        "zipai",      // 3: 自拍
-        "toupai",     // 4: 偷拍
-        "caption",    // 5: 中文字幕
-        "hotel",      // 6: 酒店
-        "ktv",        // 7: KTV
-        "classroom",  // 8: 教室
-        "office",     // 9: 办公室
-        "outside",    // 10: 户外
+        "cartoon", // 2: 卡通
+        "zipai", // 3: 自拍
+        "toupai", // 4: 偷拍
+        "caption", // 5: 中文字幕
+        "hotel", // 6: 酒店
+        "ktv", // 7: KTV
+        "classroom", // 8: 教室
+        "office", // 9: 办公室
+        "outside", // 10: 户外
     )
 
     // ===== 搜索（含分类/标签路由）=====
