@@ -169,7 +169,14 @@ class Aqdm : AnimeHttpSource() {
         }
     }
 
-    // ===== 剧集列表（参照 Nivod 模式 + 容错）=====
+    // ===== 剧集列表（重写 Request 添加 Referer 反反爬）=====
+    override fun episodeListRequest(episode: SAnime): Request {
+        val pageUrl = if (episode.url.startsWith("http")) episode.url else baseUrl + episode.url
+        return GET(pageUrl, headers.newBuilder()
+            .add("Referer", baseUrl + "/")
+            .build())
+    }
+
     override fun episodeListParse(response: Response): List<SEpisode> {
         return try {
             val doc = response.parseDoc()
@@ -188,11 +195,13 @@ class Aqdm : AnimeHttpSource() {
         }
     }
 
-    // ===== 视频提取：参照 Nivod 模式重写 =====
+    // ===== 视频提取：加 Referer 反反爬 + M3U8 提取 =====
     override fun videoListRequest(episode: SEpisode): Request {
-        // Step 1: 请求剧集页面
+        // Step 1: 请求剧集页面（带 Referer）
         val pageUrl = if (episode.url.startsWith("http")) episode.url else baseUrl + episode.url
-        val pageResponse = client.newCall(GET(pageUrl, headers)).execute()
+        val pageResponse = client.newCall(
+            GET(pageUrl, headers.newBuilder().add("Referer", baseUrl + "/").build())
+        ).execute()
         val decoded = pageResponse.use { resp ->
             decodeHtml(resp.body?.string() ?: "")
         }
