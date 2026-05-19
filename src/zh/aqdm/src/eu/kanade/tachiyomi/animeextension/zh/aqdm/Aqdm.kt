@@ -216,8 +216,8 @@ class Aqdm : AnimeHttpSource() {
         } else {
             emptyList()
         }
-    }
 
+    }
 
     // ===== 过滤器 =====
     override fun getFilterList(): AnimeFilterList = AnimeFilterList(CategoryFilter(), TagFilter())
