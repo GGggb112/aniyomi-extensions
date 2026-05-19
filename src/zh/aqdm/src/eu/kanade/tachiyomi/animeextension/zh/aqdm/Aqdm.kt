@@ -21,7 +21,7 @@ import javax.net.ssl.X509TrustManager
 class Aqdm : AnimeHttpSource() {
 
     override val baseUrl: String
-        get() = "https://vip.aqdm609.com:20844"
+        get() = "https://38.148.206.24:30006"
 
     override val lang: String
         get() = "zh"
@@ -181,70 +181,49 @@ class Aqdm : AnimeHttpSource() {
     }
 
     override fun episodeListParse(response: Response): List<SEpisode> {
-        return try {
-            val doc = response.parseDoc()
-            val title = doc.select("title").text().substringBefore(" - ").trim()
-            val path = response.request.url.encodedPath
-            val query = response.request.url.encodedQuery
-            val episodeUrl = if (query != null) "$path?$query" else path
-            listOf(
-                SEpisode.create().apply {
-                    name = title
-                    url = episodeUrl
-                },
-            )
-        } catch (_: Exception) {
-            emptyList()
-        }
+        val doc = response.parseDoc()
+        val title = doc.select("title").text().substringBefore(" - ").trim()
+        val path = response.request.url.encodedPath
+        val query = response.request.url.encodedQuery
+        val episodeUrl = if (query != null) "$path?$query" else path
+        return listOf(
+            SEpisode.create().apply {
+                name = title.ifEmpty { "播放" }
+                url = episodeUrl
+            },
+        )
     }
 
-    // ===== 视频提取：加 Referer 反反爬 + M3U8 提取 =====
+    // ===== 视频列表：返回播放页 Request，框架负责执行 =====
     override fun videoListRequest(episode: SEpisode): Request {
-        // Step 1: 请求剧集页面（带 Referer）
         val pageUrl = if (episode.url.startsWith("http")) episode.url else baseUrl + episode.url
-        val pageResponse = client.newCall(
-            GET(
-                pageUrl,
-                headers.newBuilder()
-                    .add("Referer", baseUrl + "/")
-                    .build(),
-            ),
-        ).execute()
-        val decoded = pageResponse.use { resp ->
-            decodeHtml(resp.body?.string() ?: "")
-        }
+        return GET(
+            pageUrl,
+            headers.newBuilder()
+                .add("Referer", baseUrl + "/")
+                .build(),
+        )
+    }
 
-        // Step 2: 从解码后的页面提取 M3U8 URL
-        val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
+    // ===== 视频解析：从播放页 HTML 解密提取 M3U8 =====
+    override fun videoListParse(response: Response): List<Video> {
+        val rawBody = response.body?.string() ?: return emptyList()
+        val decoded = decodeHtml(rawBody)
+
+        // M3U8 提取优先级：let video_url > http m3u8 通用正则
+        val jsM3u8 = Regex("""let\s+video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
             .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) {
-            return GET(jsM3u8, headers)
+            return listOf(Video(jsM3u8, "HLS", jsM3u8))
         }
 
-        // Step 2b: 尝试从 Artplayer 配置提取
-        val artM3u8 = Regex("""url\s*:\s*'([^']+\.m3u8[^']*)'""")
-            .find(decoded)?.groupValues?.get(1)
-        if (artM3u8 != null) {
-            return GET(artM3u8, headers)
-        }
-
-        // Step 2c: 通用 M3U8 正则提取
         val m3u8Url = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
-            .find(decoded)?.value ?: ""
-        if (m3u8Url.isNotBlank()) {
-            return GET(m3u8Url, headers)
+            .find(decoded)?.value
+        if (m3u8Url != null) {
+            return listOf(Video(m3u8Url, "HLS", m3u8Url))
         }
-        // fallback: 返回原始页面请求
-        return GET(pageUrl, headers)
-    }
 
-    override fun videoListParse(response: Response): List<Video> {
-        val videoUrl = response.request.url.toString()
-        return if (videoUrl.contains(".m3u8")) {
-            listOf(Video(videoUrl, "HLS", videoUrl))
-        } else {
-            emptyList()
-        }
+        return emptyList()
     }
 
     // ===== 过滤器 =====
