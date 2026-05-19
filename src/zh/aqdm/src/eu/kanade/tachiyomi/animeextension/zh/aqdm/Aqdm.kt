@@ -227,14 +227,22 @@ class Aqdm : AnimeHttpSource() {
         val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
             .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) {
-            return listOf(Video(jsM3u8, "HLS", videoUrl = jsM3u8))
+            val videoHeaders = headers.newBuilder()
+                .add("Referer", "$baseUrl/")
+                .add("Origin", baseUrl)
+                .build()
+            return listOf(Video(jsM3u8, "HLS", videoUrl = jsM3u8, headers = videoHeaders))
         }
 
         val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
         val m3u8Url = m3u8Regex.find(decoded)?.value ?: ""
 
         return if (m3u8Url.isNotBlank()) {
-            listOf(Video(m3u8Url, "HLS", videoUrl = m3u8Url))
+            val videoHeaders = headers.newBuilder()
+                .add("Referer", "$baseUrl/")
+                .add("Origin", baseUrl)
+                .build()
+            listOf(Video(m3u8Url, "HLS", videoUrl = m3u8Url, headers = videoHeaders))
         } else {
             emptyList()
         }
