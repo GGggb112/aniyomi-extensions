@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.animeextension.zh.aqdm
 
+import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
 import eu.kanade.tachiyomi.animesource.model.AnimesPage
@@ -20,7 +21,7 @@ import javax.net.ssl.SSLContext
 import javax.net.ssl.TrustManager
 import javax.net.ssl.X509TrustManager
 
-class Aqdm : AnimeHttpSource() {
+class Aqdm : ConfigurableAnimeSource, AnimeHttpSource() {
 
     override val baseUrl: String
         get() = "https://vip.aqdm609.com:20844"
@@ -77,19 +78,77 @@ class Aqdm : AnimeHttpSource() {
         return Jsoup.parse(decoded)
     }
 
-    // ===== Tag 中文->英文 slug 映射 =====
+    // ===== Tag 中文->英文 slug 映射 (完整版) =====
     private val tagSlugs = arrayOf(
-        "", // 0: 无
-        "uncensored", // 1: 无修正
-        "cartoon", // 2: 卡通
-        "zipai", // 3: 自拍
-        "toupai", // 4: 偷拍
-        "caption", // 5: 中文字幕
-        "hotel", // 6: 酒店
-        "ktv", // 7: KTV
-        "classroom", // 8: 教室
-        "office", // 9: 办公室
-        "outside", // 10: 户外
+        "",
+        "uncensored",
+        "cartoon",
+        "zipai",
+        "toupai",
+        "caption",
+        "hotel",
+        "ktv",
+        "classroom",
+        "office",
+        "outside",
+        "wc",
+        "car",
+        "home",
+        "woman",
+        "student",
+        "teacher",
+        "lady",
+        "ol",
+        "model",
+        "celebrity",
+        "anchor",
+        "mother",
+        "sister",
+        "big-breast",
+        "beauty-breast",
+        "big-ass",
+        "beauty-back",
+        "powder",
+        "solppy",
+        "virgin",
+        "beauty-leg",
+        "black-big",
+        "sm",
+        "bundling",
+        "foot-love",
+        "rape",
+        "homosexual",
+        "adultery",
+        "fornication",
+        "uniform",
+        "stockings",
+        "nurse",
+        "cosplay",
+        "hostess",
+        "sexy-ingerie",
+        "back-fuck",
+        "injection",
+        "masturbation",
+        "oral-copulation",
+        "deep-throat",
+        "spray-tide",
+        "group",
+        "breast-fuck",
+        "yan-shot",
+        "anal-copulation",
+        "vegetarian",
+        "pure",
+        "hairless",
+        "avlady",
+        "bestiality",
+        "loli",
+        "star",
+        "toys",
+        "shemale",
+        "other",
+        "massage",
+        "exhibitionism",
+        "chest-shot",
     )
 
     // ===== 搜索（含分类/标签路由）=====
@@ -113,7 +172,7 @@ class Aqdm : AnimeHttpSource() {
         }
 
         val tagIdx = tagFilter?.state ?: 0
-        val tagSlug = if (tagIdx in 1..tagSlugs.lastIndex) tagSlugs[tagIdx] else null
+        val tagSlug = if (tagIdx in 1 until tagSlugs.size) tagSlugs[tagIdx] else null
 
         return when {
             tagSlug != null -> {
@@ -144,7 +203,6 @@ class Aqdm : AnimeHttpSource() {
         return parseListPage(fetchDoc(response))
     }
 
-    // ===== 最新/热门 =====
     override fun latestUpdatesRequest(page: Int): Request {
         return if (page <= 1) {
             GET(baseUrl, headers)
@@ -198,11 +256,20 @@ class Aqdm : AnimeHttpSource() {
         val title = rawTitle.substringBefore(" - ").trim()
         return SAnime.create().apply {
             this.title = title.ifEmpty { rawTitle }
-            description = doc.select(
-                ".video-description, .description, .info, .detail",
-            ).text()
-            genre = doc.select(".tags a, .tag a, a[href*=tag]")
-                .joinToString(", ") { it.text() }
+            description = doc.select("meta[property=og:description]").attr("content")
+                .ifEmpty {
+                    doc.select(".video-description, .detail-video-description").text()
+                }
+                .ifEmpty {
+                    doc.select("meta[name=description]").attr("content")
+                }
+            genre = doc.select("a[href*=tag]")
+                .joinToString(", ") { it.text().trim() }
+            // 视频播放量
+            val views = doc.select(".detail-video-views").text()
+            if (views.isNotBlank()) {
+                description = "$views\n$description"
+            }
         }
     }
 
@@ -210,10 +277,14 @@ class Aqdm : AnimeHttpSource() {
     override fun episodeListParse(response: Response): List<SEpisode> {
         val doc = fetchDoc(response)
         val title = doc.select("title").text().substringBefore(" - ").trim()
+        // 使用相对路径，避免URL端口拼接错误
+        val path = response.request.url.encodedPath
+        val query = response.request.url.encodedQuery
+        val relativeUrl = if (query != null) "$path?$query" else path
         return listOf(
             SEpisode.create().apply {
                 name = title
-                url = response.request.url.toString()
+                url = relativeUrl
             },
         )
     }
@@ -223,7 +294,6 @@ class Aqdm : AnimeHttpSource() {
         val raw = response.body?.string() ?: return emptyList()
         val decoded = decodeHtml(raw)
 
-        // 直接从解码后的原始HTML提取（绕过JSOUP）
         val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
             .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) {
@@ -287,16 +357,74 @@ class Aqdm : AnimeHttpSource() {
         "标签",
         arrayOf(
             "无",
-            "无修正",
-            "卡通",
+            "无碼",
+            "H動畫",
             "自拍",
             "偷拍",
             "中文字幕",
             "酒店",
             "KTV",
             "教室",
-            "办公室",
-            "户外",
+            "辦公室",
+            "野外",
+            "洗手間",
+            "車震",
+            "家裡",
+            "少婦",
+            "學生",
+            "老師",
+            "小姐",
+            "OL",
+            "嫩模",
+            "網紅",
+            "主播",
+            "媽媽",
+            "姐姐",
+            "巨乳",
+            "美乳",
+            "巨臀",
+            "美背",
+            "三點粉",
+            "多汁",
+            "處女",
+            "美腿",
+            "巨屌",
+            "SM",
+            "捆綁",
+            "戀足",
+            "強姦",
+            "同性",
+            "迷姦",
+            "近親相姦",
+            "制服誘惑",
+            "絲襪",
+            "護士",
+            "Cosplay",
+            "空姐",
+            "情趣內衣",
+            "后入",
+            "無套中出",
+            "自慰",
+            "口爆",
+            "深喉",
+            "潮吹",
+            "群P",
+            "乳交",
+            "顏射",
+            "肛交",
+            "素人",
+            "清純可愛",
+            "白虎",
+            "女優",
+            "人獸",
+            "蘯莉",
+            "明星",
+            "情趣玩具",
+            "人妖",
+            "另類",
+            "按摩",
+            "露出",
+            "胸射",
         ),
         0,
     )
