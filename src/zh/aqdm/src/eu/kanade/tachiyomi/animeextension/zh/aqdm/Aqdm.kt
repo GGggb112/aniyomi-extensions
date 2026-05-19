@@ -220,18 +220,18 @@ class Aqdm : AnimeHttpSource() {
 
     // ===== 视频列表 =====
     override fun videoListParse(response: Response): List<Video> {
-        val doc = fetchDoc(response)
-        val html = doc.html()
+        val raw = response.body?.string() ?: return emptyList()
+        val decoded = decodeHtml(raw)
 
-        // 优先匹配 let video_url = '...' 模式
+        // 直接从解码后的原始HTML提取（绕过JSOUP）
         val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
-            .find(html)?.groupValues?.get(1)
+            .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) {
             return listOf(Video(jsM3u8, "HLS", videoUrl = jsM3u8))
         }
 
         val m3u8Regex = Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
-        val m3u8Url = m3u8Regex.find(html)?.value ?: ""
+        val m3u8Url = m3u8Regex.find(decoded)?.value ?: ""
 
         return if (m3u8Url.isNotBlank()) {
             listOf(Video(m3u8Url, "HLS", videoUrl = m3u8Url))
@@ -241,15 +241,15 @@ class Aqdm : AnimeHttpSource() {
     }
 
     override fun videoUrlParse(response: Response): String {
-        val doc = fetchDoc(response)
-        val html = doc.html()
+        val raw = response.body?.string() ?: return ""
+        val decoded = decodeHtml(raw)
 
         val jsM3u8 = Regex("""let video_url\s*=\s*'([^']+\.m3u8[^']*)'""")
-            .find(html)?.groupValues?.get(1)
+            .find(decoded)?.groupValues?.get(1)
         if (jsM3u8 != null) return jsM3u8
 
         return Regex("""https?://[^\s"'<>]+\.m3u8[^\s"'<>]*""")
-            .find(html)?.value ?: ""
+            .find(decoded)?.value ?: ""
     }
 
     // ===== 过滤器 =====
