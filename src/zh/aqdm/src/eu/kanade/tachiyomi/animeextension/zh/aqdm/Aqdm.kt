@@ -1,5 +1,6 @@
 package eu.kanade.tachiyomi.animeextension.zh.aqdm
 
+import androidx.preference.PreferenceScreen
 import eu.kanade.tachiyomi.animesource.ConfigurableAnimeSource
 import eu.kanade.tachiyomi.animesource.model.AnimeFilter
 import eu.kanade.tachiyomi.animesource.model.AnimeFilterList
@@ -57,6 +58,11 @@ class Aqdm : ConfigurableAnimeSource, AnimeHttpSource() {
             .sslSocketFactory(sslContext.socketFactory, trustAllCerts[0] as X509TrustManager)
             .hostnameVerifier { _, _ -> true }
             .build()
+    }
+
+    // ===== ConfigurableAnimeSource: 设置界面 =====
+    override fun setupPreferenceScreen(screen: PreferenceScreen) {
+        // 预留设置入口，后续可添加清晰度/服务器/语言等选项
     }
 
     // ===== sojson.v4 解密 =====
